@@ -1,63 +1,85 @@
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
 import plotly.graph_objs as go
+import dash_core_components as dcc
+from dash import html
+from dash.dependencies import Input, Output
+import pandas as pd
 
-########### Define your variables
-beers=['Chesapeake Stout', 'Snake Dog IPA', 'Imperial Porter', 'Double Dog IPA']
-ibu_values=[35, 60, 85, 75]
-abv_values=[5.4, 7.1, 9.2, 4.3]
-color1='darkred'
-color2='orange'
-mytitle='Beer Comparison'
-tabtitle='beer!'
-myheading='Flying Dog Beers'
-label1='IBU'
-label2='ABV'
-githublink='https://github.com/austinlasseter/flying-dog-beers'
-sourceurl='https://www.flyingdog.com/beers/'
+app = dash.Dash(__name__)
 
-########### Set up the chart
-bitterness = go.Bar(
-    x=beers,
-    y=ibu_values,
-    name=label1,
-    marker={'color':color1}
-)
-alcohol = go.Bar(
-    x=beers,
-    y=abv_values,
-    name=label2,
-    marker={'color':color2}
-)
+df = pd.read_csv("/content/drive/MyDrive/Colab Notebooks/acfun_dota2_ti10/acfun_dota2_ti10.csv")
+df = df.sort_values('match_id')
 
-beer_data = [bitterness, alcohol]
-beer_layout = go.Layout(
-    barmode='group',
-    title = mytitle
-)
+app.layout = html.Div([
+    html.Div([
 
-beer_fig = go.Figure(data=beer_data, layout=beer_layout)
+        html.Div([
+            html.Label(['Date:'], style={'font-weight': 'bold'}),
+            dcc.Dropdown(
+                id='date',
+                options=[{'label': i, 'value': i} for i in sorted(set(df['date'].tolist() + ['all']))],
+                value='all'
+            ),
+            html.Label(['Radiant:'], style={'font-weight': 'bold'}),
+            dcc.Dropdown(
+                id='radiant',
+                options=[{'label': i, 'value': i} for i in sorted(set(df['Team'].tolist() + ['all']))],
+                value='all'
+            )], style={'width': '48%', 'display': 'inline-block'}),
+        html.Div([
+            html.Label(['Time:'], style={'font-weight': 'bold'}),
+            dcc.Dropdown(
+                id='time',
+                options=[{'label': i, 'value': i} for i in sorted(set(df['time'].tolist() + ['all']))],
+                value='all'
+            ),
+            html.Label(['Dire:'], style={'font-weight': 'bold'}),
+            dcc.Dropdown(
+                id='dire',
+                options=[{'label': i, 'value': i} for i in sorted(set(df['Team.1'].tolist() + ['all']))],
+                value='all'
+            )], style={'width': '48%', 'display': 'inline-block'}),
+    dcc.RadioItems(
+                id='display-type',
+                options=[{'label': i, 'value': i} for i in ['gold', 'exp']],
+                value='gold'
+            ),
+    dcc.Graph(id='acfun-graphic')
+    ])
+])
 
+@app.callback(
+    Output('acfun-graphic', 'figure'),
+    Output('radiant', 'options'),
+    Output('dire', 'options'),
+    Output('time', 'options'),
+    Input('date', 'value'),
+    Input('radiant', 'value'),
+    Input('dire', 'value'),
+    Input('time', 'value'),
+    Input('display-type', 'value'))
+def update_graph(date, radiant, dire, time, display_type):
+    dff = df
+    if date != 'all':
+        dff = dff[dff['date'] == date].reset_index()
+    if radiant != 'all':
+        dff = dff[dff['Team'] == radiant].reset_index()
+    if dire != 'all':
+        dff = dff[dff['Team.1'] == dire].reset_index()
+    if time != 'all':
+        dff = dff[dff['time'] == time].reset_index()
 
-########### Initiate the app
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-server = app.server
-app.title=tabtitle
+    fig = go.Figure()
+    for i in range(len(dff.index)):
+        if display_type == 'gold':
+            fig.add_trace(go.Scatter(y=[int(s) for s in dff['radiant_gold_adv'][i].split(',')], name='{} vs {} {}'.format(dff['Team'][i], dff['Team.1'][i], dff['time'][i]), mode='lines'))
+        elif display_type == 'exp':
+            fig.add_trace(go.Scatter(y=[int(s) for s in dff['radiant_exp_adv'][i].split(',')], name='{} vs {} {}'.format(dff['Team'][i], dff['Team.1'][i], dff['time'][i]), mode='lines'))
+    fig.update_layout(title='AcFun Dota2 TI10 Statistics',
+                   xaxis_title='Duration',
+                   yaxis_title='radiant_gold_adv' if display_type == 'gold' else 'radiant_exp_adv')
+    return fig, [{'label': i, 'value': i} for i in sorted(set(dff['Team'].tolist() + ['all']))], [{'label': i, 'value': i} for i in sorted(set(dff['Team.1'].tolist() + ['all']))], [{'label': i, 'value': i} for i in sorted(set(dff['time'].tolist() + ['all']))]
 
-########### Set up the layout
-app.layout = html.Div(children=[
-    html.H1(myheading),
-    dcc.Graph(
-        id='flyingdog',
-        figure=beer_fig
-    ),
-    html.A('Code on Github', href=githublink),
-    html.Br(),
-    html.A('Data Source', href=sourceurl),
-    ]
-)
 
 if __name__ == '__main__':
-    app.run_server()
+    app.run_server(debug=True)
