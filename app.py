@@ -7,7 +7,7 @@ import pandas as pd
 
 app = dash.Dash(__name__)
 
-df = pd.read_csv("/content/drive/MyDrive/Colab Notebooks/acfun_dota2_ti10/acfun_dota2_ti10.csv")
+df = pd.read_csv("https://github.com/zyz9066/acfun-dota2-ti10/blob/master/assets/acfun_dota2_ti10.csv")
 df = df.sort_values('match_id')
 
 app.layout = html.Div([
