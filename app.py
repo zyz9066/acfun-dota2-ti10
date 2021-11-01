@@ -6,6 +6,7 @@ from dash.dependencies import Input, Output
 import pandas as pd
 
 app = dash.Dash(__name__)
+server = app.server
 
 df = pd.read_csv("https://github.com/zyz9066/acfun-dota2-ti10/blob/master/assets/acfun_dota2_ti10.csv")
 df = df.sort_values('match_id')
@@ -82,4 +83,4 @@ def update_graph(date, radiant, dire, time, display_type):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server()
